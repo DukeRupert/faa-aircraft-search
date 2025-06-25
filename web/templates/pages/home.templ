@@ -3,7 +3,6 @@ package pages
 import "github.com/dukerupert/faa-aircraft-search/web/templates/layout"
 import "github.com/dukerupert/faa-aircraft-search/web/templates/components"
 import "github.com/dukerupert/faa-aircraft-search/internal/db"
-import "strconv"
 
 templ Home(aircraft []db.AircraftDatum, total int64, page int, limit int) {
 	@layout.Base("Home") {
@@ -26,13 +25,6 @@ templ Home(aircraft []db.AircraftDatum, total int64, page int, limit int) {
 			</form>
 		</div>
 		
-		<div class="mb-4">
-			<h2 class="text-xl font-semibold text-gray-900">
-				All Aircraft ({ strconv.FormatInt(total, 10) } total)
-			</h2>
-			<p class="text-gray-600">Showing page { strconv.Itoa(page) } of { strconv.Itoa(int((total + int64(limit) - 1) / int64(limit))) }</p>
-		</div>
-		
-		@components.AircraftList(aircraft, total, page, limit)
+		@components.AircraftContainer(aircraft, total, page, limit)
 	}
 }

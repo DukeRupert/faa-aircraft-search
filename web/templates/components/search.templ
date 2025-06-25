@@ -5,7 +5,7 @@ import "strconv"
 import "fmt"
 
 templ AircraftList(aircraft []db.AircraftDatum, total int64, page int, limit int) {
-	<div class="bg-white shadow overflow-hidden sm:rounded-md">
+	<div id="aircraft-list" class="bg-white shadow overflow-hidden sm:rounded-md">
 		<ul role="list" class="divide-y divide-gray-200">
 			for _, a := range aircraft {
 				@AircraftListItem(a)
@@ -60,15 +60,17 @@ templ Pagination(total int64, page int, limit int) {
 	<nav class="flex items-center justify-between border-t border-gray-200 px-4 sm:px-0 mt-6">
 		<div class="-mt-px flex w-0 flex-1">
 			if page > 1 {
-				<a 
-					href={ templ.URL(fmt.Sprintf("/?page=%d", page-1)) }
+				<button 
+					hx-get={ fmt.Sprintf("/aircraft-list?page=%d", page-1) }
+					hx-target="#aircraft-container"
+					hx-swap="innerHTML"
 					class="inline-flex items-center border-t-2 border-transparent pt-4 pr-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
 				>
 					<svg class="mr-3 size-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 						<path fill-rule="evenodd" d="M18 10a.75.75 0 0 1-.75.75H4.66l2.1 1.95a.75.75 0 1 1-1.02 1.1l-3.5-3.25a.75.75 0 0 1 0-1.1l3.5-3.25a.75.75 0 1 1 1.02 1.1l-2.1 1.95h12.59A.75.75 0 0 1 18 10Z" clip-rule="evenodd"></path>
 					</svg>
 					Previous
-				</a>
+				</button>
 			} else {
 				<span class="inline-flex items-center border-t-2 border-transparent pt-4 pr-1 text-sm font-medium text-gray-300">
 					<svg class="mr-3 size-5 text-gray-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
@@ -83,15 +85,17 @@ templ Pagination(total int64, page int, limit int) {
 		</div>
 		<div class="-mt-px flex w-0 flex-1 justify-end">
 			if page < totalPages {
-				<a 
-					href={ templ.URL(fmt.Sprintf("/?page=%d", page+1)) }
+				<button 
+					hx-get={ fmt.Sprintf("/aircraft-list?page=%d", page+1) }
+					hx-target="#aircraft-container"
+					hx-swap="innerHTML"
 					class="inline-flex items-center border-t-2 border-transparent pt-4 pl-1 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
 				>
 					Next
 					<svg class="ml-3 size-5 text-gray-400" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
 						<path fill-rule="evenodd" d="M2 10a.75.75 0 0 1 .75-.75h12.59l-2.1-1.95a.75.75 0 1 1 1.02-1.1l3.5 3.25a.75.75 0 0 1 0 1.1l-3.5 3.25a.75.75 0 1 1-1.02-1.1l2.1-1.95H2.75A.75.75 0 0 1 2 10Z" clip-rule="evenodd"></path>
 					</svg>
-				</a>
+				</button>
 			} else {
 				<span class="inline-flex items-center border-t-2 border-transparent pt-4 pl-1 text-sm font-medium text-gray-300">
 					Next
@@ -106,46 +110,93 @@ templ Pagination(total int64, page int, limit int) {
 
 templ SimplePaginationNumbers(total int64, currentPage int, limit int) {
 	{{ totalPages := int((total + int64(limit) - 1) / int64(limit)) }}
+	{{ start := currentPage - 2 }}
+	{{ end := currentPage + 2 }}
 	
-	// Show current page
-	<a 
-		href={ templ.URL(fmt.Sprintf("/?page=%d", currentPage)) }
-		class="inline-flex items-center border-t-2 border-indigo-500 px-4 pt-4 text-sm font-medium text-indigo-600" 
-		aria-current="page"
-	>
-		{ strconv.Itoa(currentPage) }
-	</a>
-	
-	// Show next page if exists
-	if currentPage < totalPages {
-		<a 
-			href={ templ.URL(fmt.Sprintf("/?page=%d", currentPage+1)) }
-			class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-		>
-			{ strconv.Itoa(currentPage+1) }
-		</a>
+	// Adjust start if it goes below 1
+	if start < 1 {
+		{{ start = 1 }}
+		{{ end = 5 }}
+		if end > totalPages {
+			{{ end = totalPages }}
+		}
 	}
 	
-	// Show one more page if exists
-	if currentPage+1 < totalPages {
-		<a 
-			href={ templ.URL(fmt.Sprintf("/?page=%d", currentPage+2)) }
-			class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
-		>
-			{ strconv.Itoa(currentPage+2) }
-		</a>
+	// Adjust end if it goes beyond total pages
+	if end > totalPages {
+		{{ end = totalPages }}
+		{{ start = totalPages - 4 }}
+		if start < 1 {
+			{{ start = 1 }}
+		}
 	}
 	
-	// Show ellipsis if there are more pages
-	if currentPage+2 < totalPages {
-		<span class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500">...</span>
-		<a 
-			href={ templ.URL(fmt.Sprintf("/?page=%d", totalPages)) }
+	// Show first page and ellipsis if needed
+	if start > 1 {
+		<button 
+			hx-get="/aircraft-list?page=1"
+			hx-target="#aircraft-container"
+			hx-swap="innerHTML"
+			class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+		>
+			1
+		</button>
+		if start > 2 {
+			<span class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500">...</span>
+		}
+	}
+	
+	// Show the range of pages
+	for i := start; i <= end; i++ {
+		if i == currentPage {
+			<button 
+				hx-get={ fmt.Sprintf("/aircraft-list?page=%d", i) }
+				hx-target="#aircraft-container"
+				hx-swap="innerHTML"
+				class="inline-flex items-center border-t-2 border-indigo-500 px-4 pt-4 text-sm font-medium text-indigo-600" 
+				aria-current="page"
+			>
+				{ strconv.Itoa(i) }
+			</button>
+		} else {
+			<button 
+				hx-get={ fmt.Sprintf("/aircraft-list?page=%d", i) }
+				hx-target="#aircraft-container"
+				hx-swap="innerHTML"
+				class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
+			>
+				{ strconv.Itoa(i) }
+			</button>
+		}
+	}
+	
+	// Show ellipsis and last page if needed
+	if end < totalPages {
+		if end < totalPages-1 {
+			<span class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500">...</span>
+		}
+		<button 
+			hx-get={ fmt.Sprintf("/aircraft-list?page=%d", totalPages) }
+			hx-target="#aircraft-container"
+			hx-swap="innerHTML"
 			class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
 		>
 			{ strconv.Itoa(totalPages) }
-		</a>
+		</button>
 	}
+}
+
+templ AircraftContainer(aircraft []db.AircraftDatum, total int64, page int, limit int) {
+	<div id="aircraft-container">
+		<div class="mb-4">
+			<h2 class="text-xl font-semibold text-gray-900">
+				All Aircraft ({ strconv.FormatInt(total, 10) } total)
+			</h2>
+			<p class="text-gray-600">Showing page { strconv.Itoa(page) } of { strconv.Itoa(int((total + int64(limit) - 1) / int64(limit))) }</p>
+		</div>
+		
+		@AircraftList(aircraft, total, page, limit)
+	</div>
 }
 
 templ SimpleSearchResults(message string) {

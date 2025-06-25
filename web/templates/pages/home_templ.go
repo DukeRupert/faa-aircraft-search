@@ -11,7 +11,6 @@ import templruntime "github.com/a-h/templ/runtime"
 import "github.com/dukerupert/faa-aircraft-search/web/templates/layout"
 import "github.com/dukerupert/faa-aircraft-search/web/templates/components"
 import "github.com/dukerupert/faa-aircraft-search/internal/db"
-import "strconv"
 
 func Home(aircraft []db.AircraftDatum, total int64, page int, limit int) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -46,50 +45,11 @@ func Home(aircraft []db.AircraftDatum, total int64, page int, limit int) templ.C
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"bg-white rounded-lg shadow-md p-6 mb-6\"><form class=\"flex gap-4\"><div class=\"flex-1\"><input type=\"text\" name=\"q\" placeholder=\"Search by ICAO code, manufacturer, model...\" class=\"w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent\"></div><button type=\"submit\" class=\"px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700\">Search</button></form></div><div class=\"mb-4\"><h2 class=\"text-xl font-semibold text-gray-900\">All Aircraft (")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"bg-white rounded-lg shadow-md p-6 mb-6\"><form class=\"flex gap-4\"><div class=\"flex-1\"><input type=\"text\" name=\"q\" placeholder=\"Search by ICAO code, manufacturer, model...\" class=\"w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent\"></div><button type=\"submit\" class=\"px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700\">Search</button></form></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			var templ_7745c5c3_Var3 string
-			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatInt(total, 10))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/home.templ`, Line: 31, Col: 48}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " total)</h2><p class=\"text-gray-600\">Showing page ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var4 string
-			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(page))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/home.templ`, Line: 33, Col: 61}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, " of ")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			var templ_7745c5c3_Var5 string
-			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.Itoa(int((total + int64(limit) - 1) / int64(limit))))
-			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/pages/home.templ`, Line: 33, Col: 129}
-			}
-			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</p></div>")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = components.AircraftList(aircraft, total, page, limit).Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = components.AircraftContainer(aircraft, total, page, limit).Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
