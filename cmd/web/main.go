@@ -43,8 +43,9 @@ func main() {
 
 	// Web routes (HTML pages)
 	e.GET("/", h.Home)
-	e.GET("/test", h.SimpleTest)
+	e.GET("/search", h.Search)
 	e.GET("/aircraft-list", h.AircraftList)
+	e.GET("/test", h.SimpleTest)
 
 	// Base health check route
 	e.GET("/health", h.HealthCheck)

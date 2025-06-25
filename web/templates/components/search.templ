@@ -4,6 +4,124 @@ import "github.com/dukerupert/faa-aircraft-search/internal/db"
 import "strconv"
 import "fmt"
 
+templ SearchForm() {
+	<div class="bg-white rounded-lg shadow-md p-6 mb-6">
+		<form>
+			<div class="flex gap-4">
+				<div class="flex-1">
+					<input
+						type="text"
+						name="q"
+						placeholder="Search by ICAO code, manufacturer, model..."
+						class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+						hx-get="/search"
+						hx-target="#main-content"
+						hx-trigger="input changed delay:300ms, search"
+						hx-indicator="#search-indicator"
+						autocomplete="off"
+					/>
+				</div>
+				<div class="flex items-center">
+					<div id="search-indicator" class="htmx-indicator">
+						<svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+							<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+							<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+						</svg>
+					</div>
+				</div>
+			</div>
+		</form>
+	</div>
+}
+
+templ SearchResults(aircraft []db.AircraftDatum, total int64, query string) {
+	<div id="main-content">
+		<div class="mb-4">
+			<h2 class="text-xl font-semibold text-gray-900">
+				Search Results for "{ query }"
+			</h2>
+			<p class="text-gray-600">Found { strconv.FormatInt(total, 10) } aircraft</p>
+		</div>
+		
+		if len(aircraft) > 0 {
+			<div class="bg-white rounded-lg shadow-md overflow-hidden">
+				<div class="divide-y divide-gray-200">
+					for _, a := range aircraft {
+						@SearchResultItem(a)
+					}
+				</div>
+				if total > 10 {
+					<div class="px-6 py-4 bg-gray-50 border-t border-gray-200">
+						<p class="text-sm text-gray-600">
+							Showing first 10 results. { strconv.FormatInt(total-10, 10) } more available.
+						</p>
+					</div>
+				}
+			</div>
+		} else {
+			<div class="bg-white rounded-lg shadow-md p-12 text-center">
+				<div class="text-gray-400 mb-4">
+					<svg class="mx-auto h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+						<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 12h6m-6-4h6m2 5.291A7.962 7.962 0 0118 12M6 20.291A7.962 7.962 0 016 12m0 8.291zm5.291A7.962 7.962 0 0112 18z"></path>
+					</svg>
+				</div>
+				<h3 class="text-lg font-medium text-gray-900 mb-2">No aircraft found</h3>
+				<p class="text-gray-500">No aircraft found matching "{ query }". Try a different search term.</p>
+			</div>
+		}
+	</div>
+}
+
+templ SearchResultItem(aircraft db.AircraftDatum) {
+	<div class="px-6 py-4 hover:bg-gray-50 transition-colors duration-150">
+		<div class="flex items-center justify-between">
+			<div class="flex items-center space-x-4">
+				<div class="flex-shrink-0">
+					<div class="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
+						<span class="text-sm font-bold text-indigo-600">{ aircraft.IcaoCode.String }</span>
+					</div>
+				</div>
+				<div class="flex-1 min-w-0">
+					<div class="flex items-center space-x-2">
+						<h4 class="text-lg font-medium text-gray-900 truncate">
+							{ aircraft.Manufacturer.String }
+						</h4>
+						<span class="text-lg text-gray-500">{ aircraft.ModelFaa.String }</span>
+					</div>
+					<div class="mt-1 flex items-center space-x-4 text-sm text-gray-500">
+						<span class="flex items-center">
+							<span class="font-medium">FAA:</span>
+							<span class="ml-1">{ aircraft.FaaDesignator.String }</span>
+						</span>
+						if aircraft.Class.String != "" {
+							<span class="flex items-center">
+								<span class="font-medium">Class:</span>
+								<span class="ml-1">{ aircraft.Class.String }</span>
+							</span>
+						}
+						if aircraft.NumEngines.Valid {
+							<span class="flex items-center">
+								<span class="font-medium">Engines:</span>
+								<span class="ml-1">{ strconv.Itoa(int(aircraft.NumEngines.Int32)) }</span>
+							</span>
+						}
+					</div>
+				</div>
+			</div>
+			<div class="flex-shrink-0">
+				<button 
+					class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-indigo-700 bg-indigo-100 hover:bg-indigo-200 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-150"
+					hx-get={ fmt.Sprintf("/aircraft-detail/%d", aircraft.ID) }
+					hx-target="#aircraft-modal"
+					hx-swap="innerHTML"
+				>
+					View Details
+				</button>
+			</div>
+		</div>
+	</div>
+}
+
 templ AircraftList(aircraft []db.AircraftDatum, total int64, page int, limit int) {
 	<div id="aircraft-list" class="bg-white shadow overflow-hidden sm:rounded-md">
 		<ul role="list" class="divide-y divide-gray-200">
@@ -100,7 +218,7 @@ templ Pagination(total int64, page int, limit int) {
 				<span class="inline-flex items-center border-t-2 border-transparent pt-4 pl-1 text-sm font-medium text-gray-300">
 					Next
 					<svg class="ml-3 size-5 text-gray-300" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
-						<path fill-rule="evenodd" d="M2 10a.75.75 0 0 1 .75-.75h12.59l-2.1-1.95a.75.75 0 1 1 1.02-1.1l3.5 3.25a.75.75 0 0 1 0 1.1l-3.5 3.25a.75.75 0 1 1-1.02-1.1l2.1-1.95H2.75A.75.75 0 0 1 2 10Z" clip-rule="evenodd"></path>
+						<path fill-rule="evenodd" d="M2 10a.75.75 0 0 1 .75-.75h12.59l-2.1-1.95a.75.75 0 1 1 1.02-1.1l3.5 3.25a.75.75 0 0 1 0 1.1l-3.5 3.25a.75.75 0 1 1-1.02-1.10l2.1-1.95H2.75A.75.75 0 0 1 2 10Z" clip-rule="evenodd"></path>
 					</svg>
 				</span>
 			}
@@ -135,7 +253,7 @@ templ SimplePaginationNumbers(total int64, currentPage int, limit int) {
 	if start > 1 {
 		<button 
 			hx-get="/aircraft-list?page=1"
-			hx-target="#aircraft-container"
+			hx-target="#main-content"
 			hx-swap="innerHTML"
 			class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
 		>
@@ -151,7 +269,7 @@ templ SimplePaginationNumbers(total int64, currentPage int, limit int) {
 		if i == currentPage {
 			<button 
 				hx-get={ fmt.Sprintf("/aircraft-list?page=%d", i) }
-				hx-target="#aircraft-container"
+				hx-target="#main-content"
 				hx-swap="innerHTML"
 				class="inline-flex items-center border-t-2 border-indigo-500 px-4 pt-4 text-sm font-medium text-indigo-600" 
 				aria-current="page"
@@ -161,7 +279,7 @@ templ SimplePaginationNumbers(total int64, currentPage int, limit int) {
 		} else {
 			<button 
 				hx-get={ fmt.Sprintf("/aircraft-list?page=%d", i) }
-				hx-target="#aircraft-container"
+				hx-target="#main-content"
 				hx-swap="innerHTML"
 				class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
 			>
@@ -177,7 +295,7 @@ templ SimplePaginationNumbers(total int64, currentPage int, limit int) {
 		}
 		<button 
 			hx-get={ fmt.Sprintf("/aircraft-list?page=%d", totalPages) }
-			hx-target="#aircraft-container"
+			hx-target="#main-content"
 			hx-swap="innerHTML"
 			class="inline-flex items-center border-t-2 border-transparent px-4 pt-4 text-sm font-medium text-gray-500 hover:border-gray-300 hover:text-gray-700"
 		>
@@ -187,7 +305,7 @@ templ SimplePaginationNumbers(total int64, currentPage int, limit int) {
 }
 
 templ AircraftContainer(aircraft []db.AircraftDatum, total int64, page int, limit int) {
-	<div id="aircraft-container">
+	<div id="main-content">
 		<div class="mb-4">
 			<h2 class="text-xl font-semibold text-gray-900">
 				All Aircraft ({ strconv.FormatInt(total, 10) } total)

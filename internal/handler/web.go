@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dukerupert/faa-aircraft-search/internal/db"
@@ -45,6 +46,59 @@ func (h *Handlers) Home(c echo.Context) error {
 	}
 
 	return pages.Home(aircraft, total, page, limit).Render(ctx, c.Response().Writer)
+}
+
+// Search handles HTMX search requests
+func (h *Handlers) Search(c echo.Context) error {
+	ctx, cancel := context.WithTimeout(c.Request().Context(), 10*time.Second)
+	defer cancel()
+
+	query := strings.TrimSpace(c.QueryParam("q"))
+	
+	// If query is empty, return to all aircraft view
+	if query == "" {
+		// Get page parameter, default to 1
+		page := 1
+		limit := 10
+		offset := int32((page - 1) * limit)
+
+		// Get aircraft with pagination
+		aircraft, err := h.db.Queries.GetAllAircraft(ctx, db.GetAllAircraftParams{
+			Limit:  int32(limit),
+			Offset: offset,
+		})
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Database error")
+		}
+
+		// Get total count
+		total, err := h.db.Queries.CountAircraft(ctx)
+		if err != nil {
+			return c.String(http.StatusInternalServerError, "Database error")
+		}
+
+		return components.AircraftContainer(aircraft, total, page, limit).Render(ctx, c.Response().Writer)
+	}
+
+	// Search aircraft (limit to 10 results for live search)
+	searchTerm := "%" + strings.ToUpper(query) + "%"
+	
+	aircraft, err := h.db.Queries.SearchAircraft(ctx, db.SearchAircraftParams{
+		SearchTerm: searchTerm,
+		Limit:      10,
+		Offset:     0,
+	})
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Database error")
+	}
+
+	// Get total count for the search
+	total, err := h.db.Queries.CountSearchAircraft(ctx, searchTerm)
+	if err != nil {
+		return c.String(http.StatusInternalServerError, "Database error")
+	}
+
+	return components.SearchResults(aircraft, total, query).Render(ctx, c.Response().Writer)
 }
 
 // AircraftList handles HTMX requests for paginated aircraft list
