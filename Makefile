@@ -112,7 +112,7 @@ count-data: generate
 	$(GOCMD) run cmd/migrate/main.go -action=count
 
 # Development workflow shortcuts
-dev: db-up migrate-up generate import-data web
+dev: db-up generate import-data web
 
 # API testing (requires curl)
 test-api:

@@ -1,0 +1,176 @@
+package components
+
+import (
+	"fmt"
+	"github.com/dukerupert/faa-aircraft-search/internal/db"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+// Helper function to safely get numeric value from pgtype.Numeric
+func getNumericValue(num pgtype.Numeric) string {
+	if num.Valid {
+		var f float64
+		err := num.Scan(&f)
+		if err != nil {
+			return "N/A"
+		}
+		return fmt.Sprintf("%.2f", f)
+	}
+	return "N/A"
+}
+
+// AircraftDetails - Full detailed view of a single aircraft
+templ AircraftDetails(aircraft db.AircraftDatum) {
+	<div id="aircraft-container" class="space-y-4">
+		<!-- Back button -->
+		<div class="flex items-center mb-4">
+			<button 
+				hx-get="/aircraft-list?page=1"
+				hx-target="#aircraft-container"
+				hx-indicator="#loading"
+				class="inline-flex items-center text-blue-600 hover:text-blue-800 font-medium"
+			>
+				<svg class="mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+				</svg>
+				Back to List
+			</button>
+		</div>
+
+		<!-- Main aircraft card -->
+		<div class="bg-white border border-gray-200 rounded-lg p-6 shadow-md">
+			<!-- Header -->
+			<div class="border-b border-gray-200 pb-4 mb-6">
+				<h1 class="text-2xl font-bold text-blue-900">
+					{ getStringValue(aircraft.FaaDesignator) } { getStringValue(aircraft.ModelFaa) }
+				</h1>
+				<p class="text-lg text-gray-600 mt-1">{ getStringValue(aircraft.Manufacturer) }</p>
+				if aircraft.IcaoCode.Valid && aircraft.IcaoCode.String != "" {
+					<p class="text-sm text-gray-500 mt-1">ICAO Code: <span class="font-mono">{ getStringValue(aircraft.IcaoCode) }</span></p>
+				}
+			</div>
+
+			<!-- Details grid -->
+			<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+				<!-- Classification Section -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Classification</h3>
+					@DetailField("Physical Class", getStringValue(aircraft.PhysicalClassEngine))
+					@DetailField("FAA Weight Category", getStringValue(aircraft.FaaWeight))
+					@DetailField("Aircraft Class", getStringValue(aircraft.Class))
+					@DetailField("ICAO Wake Turbulence", getStringValue(aircraft.IcaoWtc))
+					@DetailField("Number of Engines", getIntValue(aircraft.NumEngines))
+				</div>
+
+				<!-- Performance Section -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Performance</h3>
+					@DetailField("Approach Speed", func() string {
+						if aircraft.ApproachSpeedKnot.Valid {
+							return fmt.Sprintf("%d knots", aircraft.ApproachSpeedKnot.Int32)
+						}
+						return "N/A"
+					}())
+					@DetailField("MTOW", func() string {
+						if aircraft.MtowLb.Valid {
+							return fmt.Sprintf("%d lbs", aircraft.MtowLb.Int32)
+						}
+						return "N/A"
+					}())
+					@DetailField("MALW", func() string {
+						if aircraft.MalwLb.Valid {
+							return fmt.Sprintf("%d lbs", aircraft.MalwLb.Int32)
+						}
+						return "N/A"
+					}())
+					@DetailField("AAC", getStringValue(aircraft.Aac))
+					@DetailField("ADG", getStringValue(aircraft.Adg))
+				</div>
+
+				<!-- Dimensions Section -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Dimensions</h3>
+					@DetailField("Wingspan", func() string {
+						if aircraft.WingspanFtWithWingletsSharklets.Valid {
+							return fmt.Sprintf("%s ft (with winglets)", getNumericValue(aircraft.WingspanFtWithWingletsSharklets))
+						} else if aircraft.WingspanFtWithoutWingletsSharklets.Valid {
+							return fmt.Sprintf("%s ft", getNumericValue(aircraft.WingspanFtWithoutWingletsSharklets))
+						}
+						return "N/A"
+					}())
+					@DetailField("Length", func() string {
+						if aircraft.LengthFt.Valid {
+							return fmt.Sprintf("%s ft", getNumericValue(aircraft.LengthFt))
+						}
+						return "N/A"
+					}())
+					@DetailField("Tail Height", func() string {
+						if aircraft.TailHeightAtOewFt.Valid {
+							return fmt.Sprintf("%s ft", getNumericValue(aircraft.TailHeightAtOewFt))
+						}
+						return "N/A"
+					}())
+					@DetailField("Main Gear Width", func() string {
+						if aircraft.MainGearWidthFt.Valid {
+							return fmt.Sprintf("%s ft", getNumericValue(aircraft.MainGearWidthFt))
+						}
+						return "N/A"
+					}())
+					@DetailField("Parking Area", func() string {
+						if aircraft.ParkingAreaFt2.Valid {
+							return fmt.Sprintf("%s ft²", getNumericValue(aircraft.ParkingAreaFt2))
+						}
+						return "N/A"
+					}())
+				</div>
+
+				<!-- Wake Categories Section -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Wake Categories</h3>
+					@DetailField("1.5 NM Category", getStringValue(aircraft.OneHalfWakeCategory))
+					@DetailField("2 NM (Appx A)", getStringValue(aircraft.TwoWakeCategoryAppxA))
+					@DetailField("2 NM (Appx B)", getStringValue(aircraft.TwoWakeCategoryAppxB))
+					@DetailField("CWT", getStringValue(aircraft.Cwt))
+				</div>
+
+				<!-- Operations Section -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Operations</h3>
+					@DetailField("Main Gear Config", getStringValue(aircraft.MainGearConfig))
+					@DetailField("SRS", getStringValue(aircraft.Srs))
+					@DetailField("LAHSO Capable", getStringValue(aircraft.Lahso))
+					@DetailField("TDG", getStringValue(aircraft.Tdg))
+					@DetailField("Registration Count", getIntValue(aircraft.RegistrationCount))
+					@DetailField("TMFS Operations FY24", getIntValue(aircraft.TmfsOperationsFy24))
+				</div>
+
+				<!-- Additional Info Section -->
+				<div class="space-y-4">
+					<h3 class="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2">Additional Info</h3>
+					@DetailField("BADA Model", getStringValue(aircraft.ModelBada))
+					@DetailField("FAA Registry", getStringValue(aircraft.FaaRegistry))
+					if aircraft.RotorDiameterFt.Valid {
+						@DetailField("Rotor Diameter", fmt.Sprintf("%s ft", getNumericValue(aircraft.RotorDiameterFt)))
+					}
+					@DetailField("Last Update", getStringValue(aircraft.LastUpdate))
+				</div>
+			</div>
+
+			<!-- Remarks section if available -->
+			if aircraft.Remarks.Valid && aircraft.Remarks.String != "" {
+				<div class="mt-6 pt-4 border-t border-gray-200">
+					<h3 class="text-lg font-semibold text-gray-900 mb-2">Remarks</h3>
+					<p class="text-gray-700 bg-gray-50 p-3 rounded-md">{ getStringValue(aircraft.Remarks) }</p>
+				</div>
+			}
+		</div>
+	</div>
+}
+
+// DetailField - Component for displaying detailed field information
+templ DetailField(label, value string) {
+	<div class="flex flex-col">
+		<dt class="text-sm font-medium text-gray-500">{ label }</dt>
+		<dd class="text-sm text-gray-900 mt-1 font-medium">{ value }</dd>
+	</div>
+}

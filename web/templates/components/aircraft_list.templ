@@ -1,0 +1,104 @@
+package components
+
+import (
+	"fmt"
+	"github.com/dukerupert/faa-aircraft-search/internal/db"
+	"github.com/jackc/pgx/v5/pgtype"
+)
+
+// Helper function to safely get string value from pgtype.Text
+func getStringValue(text pgtype.Text) string {
+	if text.Valid {
+		return text.String
+	}
+	return "N/A"
+}
+
+// Helper function to safely get int value from pgtype.Int4
+func getIntValue(num pgtype.Int4) string {
+	if num.Valid {
+		return fmt.Sprintf("%d", num.Int32)
+	}
+	return "N/A"
+}
+
+// AircraftContainer - Main container for aircraft list with pagination
+templ AircraftContainer(aircraft []db.AircraftDatum, total int64, page int, limit int) {
+	<div id="aircraft-container" class="space-y-3">
+		@AircraftList(aircraft)
+		@Pagination(total, page, limit)
+	</div>
+}
+
+// AircraftList - Just the list of aircraft cards
+templ AircraftList(aircraft []db.AircraftDatum) {
+	<div class="space-y-2">
+		for _, a := range aircraft {
+			@AircraftCard(a)
+		}
+	</div>
+}
+
+// AircraftCard - Individual aircraft display card
+templ AircraftCard(aircraft db.AircraftDatum) {
+	<div class="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:shadow-md transition-shadow">
+		<!-- Aircraft identification -->
+		<div class="mb-3">
+			<!-- Combined FAA Designator -->
+			<h3 class="text-base font-bold text-blue-900 leading-tight">
+				{ getStringValue(aircraft.FaaDesignator) } 
+			</h3>
+			
+			<!-- Model -->
+			<div class="text-gray-600 text-sm mt-1">
+				{ getStringValue(aircraft.ModelFaa) }
+			</div>
+		</div>
+		
+		<!-- Key operational data -->
+		<div class="grid grid-cols-1 sm:grid-cols-3 gap-2 text-sm">
+			@AircraftDataField("CWT", getStringValue(aircraft.Cwt))
+			@AircraftDataField("Weight", getStringValue(aircraft.FaaWeight))
+			@AircraftDataField("Class", getStringValue(aircraft.Class))
+		</div>
+		
+		<!-- Additional info row -->
+		@AircraftAdditionalInfo(aircraft)
+
+		<!-- Details link -->
+		<div class="mt-3 pt-2 border-t border-gray-100">
+			<button 
+				hx-get={ fmt.Sprintf("/aircraft-details/%d", aircraft.ID) }
+				hx-target="#aircraft-container"
+				hx-indicator="#loading"
+				class="text-blue-600 hover:text-blue-800 text-sm font-medium flex items-center"
+			>
+				View Full Details
+				<svg class="ml-1 h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+					<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+				</svg>
+			</button>
+		</div>
+	</div>
+}
+
+// AircraftDataField - Reusable component for displaying key aircraft data
+templ AircraftDataField(label, value string) {
+	<div class="flex flex-col">
+		<span class="text-gray-500 text-xs uppercase tracking-wide font-medium">{ label }</span>
+		<span class="font-medium text-gray-800 text-sm">{ value }</span>
+	</div>
+}
+
+// AircraftAdditionalInfo - Additional aircraft information row
+templ AircraftAdditionalInfo(aircraft db.AircraftDatum) {
+	<div class="mt-2 text-xs text-gray-500">
+		<span>Type: { getStringValue(aircraft.PhysicalClassEngine) }</span>
+		if aircraft.NumEngines.Valid {
+			| Engines: { getIntValue(aircraft.NumEngines) }
+		}
+		if aircraft.IcaoWtc.Valid && aircraft.IcaoWtc.String != "" {
+			| Wake: { getStringValue(aircraft.IcaoWtc) }
+		}
+	</div>
+}

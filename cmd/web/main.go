@@ -45,6 +45,7 @@ func main() {
 	e.GET("/", h.Home)
 	e.GET("/search", h.Search)
 	e.GET("/aircraft-list", h.AircraftList)
+	e.GET("/aircraft-details/:id", h.AircraftDetails)
 	e.GET("/test", h.SimpleTest)
 
 	// Base health check route
