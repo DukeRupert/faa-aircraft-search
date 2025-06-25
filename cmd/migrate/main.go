@@ -28,30 +28,30 @@ func main() {
 
 	ctx := context.Background()
 
-	// Initialize database connection
-	pool, err := database.InitDatabase(ctx)
+	// Initialize database connection with new structure
+	db, err := database.InitDatabase(ctx)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
-	defer database.Close(pool)
+	defer db.Close()
 
 	switch *action {
 	case "import":
-		err = migration.MigrateFromExcel(ctx, pool, *filePath)
+		err = migration.MigrateFromExcel(ctx, db, *filePath)
 		if err != nil {
 			log.Fatal("Migration failed:", err)
 		}
 		fmt.Println("Migration completed successfully!")
 
 	case "clear":
-		err = migration.ClearData(ctx, pool)
+		err = migration.ClearData(ctx, db)
 		if err != nil {
 			log.Fatal("Failed to clear data:", err)
 		}
 		fmt.Println("Data cleared successfully!")
 
 	case "count":
-		count, err := migration.GetRecordCount(ctx, pool)
+		count, err := migration.GetRecordCount(ctx, db)
 		if err != nil {
 			log.Fatal("Failed to get record count:", err)
 		}

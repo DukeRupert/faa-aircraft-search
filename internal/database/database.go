@@ -8,8 +8,10 @@ import (
 	"time"
 
 	"github.com/dukerupert/faa-aircraft-search/internal/db"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/joho/godotenv/autoload"
 )
 
 type Config struct {
@@ -65,7 +67,7 @@ func InitDatabase(ctx context.Context) (*Database, error) {
 	// Connect to the admin database with retry logic
 	var adminConn *pgx.Conn
 	var err error
-	
+
 	for attempts := 0; attempts < 30; attempts++ {
 		adminConn, err = pgx.Connect(ctx, adminConnString)
 		if err == nil {
@@ -74,7 +76,7 @@ func InitDatabase(ctx context.Context) (*Database, error) {
 		log.Printf("Failed to connect to PostgreSQL (attempt %d/30): %v", attempts+1, err)
 		time.Sleep(2 * time.Second)
 	}
-	
+
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to PostgreSQL after 30 attempts: %w", err)
 	}
@@ -90,12 +92,12 @@ func InitDatabase(ctx context.Context) (*Database, error) {
 	// Create the database if it doesn't exist
 	if !exists {
 		log.Printf("Database '%s' does not exist. Creating it...", config.DBName)
-		
+
 		// Note: Database names cannot be parameterized in PostgreSQL, but we validate the name
 		if !isValidDatabaseName(config.DBName) {
 			return nil, fmt.Errorf("invalid database name: %s", config.DBName)
 		}
-		
+
 		createDBQuery := fmt.Sprintf("CREATE DATABASE %s", pgx.Identifier{config.DBName}.Sanitize())
 		_, err = adminConn.Exec(ctx, createDBQuery)
 		if err != nil {
@@ -139,7 +141,7 @@ func InitDatabase(ctx context.Context) (*Database, error) {
 	queries := db.New(pool)
 
 	log.Printf("Successfully connected to database '%s'", config.DBName)
-	
+
 	return &Database{
 		Pool:    pool,
 		Queries: queries,
@@ -152,7 +154,7 @@ func (d *Database) BeginTx(ctx context.Context) (pgx.Tx, *db.Queries, error) {
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to begin transaction: %w", err)
 	}
-	
+
 	queries := d.Queries.WithTx(tx)
 	return tx, queries, nil
 }
@@ -200,20 +202,20 @@ func isValidDatabaseName(name string) bool {
 	if len(name) == 0 || len(name) > 63 {
 		return false
 	}
-	
+
 	// Database names should start with a letter or underscore
 	first := name[0]
 	if !((first >= 'a' && first <= 'z') || (first >= 'A' && first <= 'Z') || first == '_') {
 		return false
 	}
-	
+
 	// Check remaining characters (letters, digits, underscores, and hyphens are allowed)
 	for _, char := range name[1:] {
-		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || 
-			 (char >= '0' && char <= '9') || char == '_' || char == '-') {
+		if !((char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') ||
+			(char >= '0' && char <= '9') || char == '_' || char == '-') {
 			return false
 		}
 	}
-	
+
 	return true
 }

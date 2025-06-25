@@ -6,10 +6,11 @@ import (
 	"log"
 	"strconv"
 	"strings"
-	"time"
 
+	"github.com/dukerupert/faa-aircraft-search/internal/database"
+	"github.com/dukerupert/faa-aircraft-search/internal/db"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/xuri/excelize/v2"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type AircraftData struct {
@@ -19,15 +20,15 @@ type AircraftData struct {
 	ModelFAA                           string
 	ModelBADA                          string
 	PhysicalClassEngine                string
-	NumEngines                         *int
+	NumEngines                         *int32
 	AAC                                string
 	AACMinimum                         string
 	AACMaximum                         string
 	ADG                                string
 	TDG                                string
-	ApproachSpeedKnot                  *int
-	ApproachSpeedMinimumKnot           *int
-	ApproachSpeedMaximumKnot           *int
+	ApproachSpeedKnot                  *int32
+	ApproachSpeedMinimumKnot           *int32
+	ApproachSpeedMaximumKnot           *int32
 	WingspanFtWithoutWingletsSharklets *float64
 	WingspanFtWithWingletsSharklets    *float64
 	LengthFt                           *float64
@@ -35,8 +36,8 @@ type AircraftData struct {
 	WheelbaseFt                        *float64
 	CockpitToMainGearFt                *float64
 	MainGearWidthFt                    *float64
-	MTOWLB                             *int
-	MALWLB                             *int
+	MTOWLB                             *int32
+	MALWLB                             *int32
 	MainGearConfig                     string
 	ICAOWTC                            string
 	ParkingAreaFt2                     *float64
@@ -50,14 +51,14 @@ type AircraftData struct {
 	SRS                                string
 	LAHSO                              string
 	FAARegistry                        string
-	RegistrationCount                  *int
-	TMFSOperationsFY24                 *int
+	RegistrationCount                  *int32
+	TMFSOperationsFY24                 *int32
 	Remarks                            string
 	LastUpdate                         string
 }
 
 // MigrateFromExcel imports aircraft data from an Excel file into the database
-func MigrateFromExcel(ctx context.Context, pool *pgxpool.Pool, filePath string) error {
+func MigrateFromExcel(ctx context.Context, database *database.Database, filePath string) error {
 	log.Printf("Starting migration from Excel file: %s", filePath)
 
 	// Open Excel file
@@ -86,7 +87,7 @@ func MigrateFromExcel(ctx context.Context, pool *pgxpool.Pool, filePath string) 
 	for i, row := range rows[1:] {
 		aircraft := parseRow(row)
 		
-		err := insertAircraftData(ctx, pool, aircraft)
+		err := insertAircraftData(ctx, database, aircraft)
 		if err != nil {
 			log.Printf("Failed to insert row %d: %v", i+2, err)
 			errorCount++
@@ -106,10 +107,10 @@ func MigrateFromExcel(ctx context.Context, pool *pgxpool.Pool, filePath string) 
 }
 
 // ClearData removes all aircraft data from the database
-func ClearData(ctx context.Context, pool *pgxpool.Pool) error {
+func ClearData(ctx context.Context, database *database.Database) error {
 	log.Println("Clearing all aircraft data...")
 	
-	_, err := pool.Exec(ctx, "DELETE FROM aircraft_data")
+	err := database.Queries.DeleteAllAircraftData(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to clear aircraft data: %w", err)
 	}
@@ -119,9 +120,8 @@ func ClearData(ctx context.Context, pool *pgxpool.Pool) error {
 }
 
 // GetRecordCount returns the number of records in the aircraft_data table
-func GetRecordCount(ctx context.Context, pool *pgxpool.Pool) (int, error) {
-	var count int
-	err := pool.QueryRow(ctx, "SELECT COUNT(*) FROM aircraft_data").Scan(&count)
+func GetRecordCount(ctx context.Context, database *database.Database) (int64, error) {
+	count, err := database.Queries.CountAircraft(ctx)
 	return count, err
 }
 
@@ -134,13 +134,14 @@ func parseRow(row []string) AircraftData {
 		return ""
 	}
 
-	// Helper function to safely parse int
-	getInt := func(index int) *int {
+	// Helper function to safely parse int32
+	getInt32 := func(index int) *int32 {
 		if index < len(row) && strings.TrimSpace(row[index]) != "" && strings.TrimSpace(row[index]) != "N/A" {
 			// Remove commas for numbers like "50,045"
 			cleanStr := strings.ReplaceAll(strings.TrimSpace(row[index]), ",", "")
-			if val, err := strconv.Atoi(cleanStr); err == nil {
-				return &val
+			if val, err := strconv.ParseInt(cleanStr, 10, 32); err == nil {
+				val32 := int32(val)
+				return &val32
 			}
 		}
 		return nil
@@ -165,15 +166,15 @@ func parseRow(row []string) AircraftData {
 		ModelFAA:                           getString(3),
 		ModelBADA:                          getString(4),
 		PhysicalClassEngine:                getString(5),
-		NumEngines:                         getInt(6),
+		NumEngines:                         getInt32(6),
 		AAC:                                getString(7),
 		AACMinimum:                         getString(8),
 		AACMaximum:                         getString(9),
 		ADG:                                getString(10),
 		TDG:                                getString(11),
-		ApproachSpeedKnot:                  getInt(12),
-		ApproachSpeedMinimumKnot:           getInt(13),
-		ApproachSpeedMaximumKnot:           getInt(14),
+		ApproachSpeedKnot:                  getInt32(12),
+		ApproachSpeedMinimumKnot:           getInt32(13),
+		ApproachSpeedMaximumKnot:           getInt32(14),
 		WingspanFtWithoutWingletsSharklets: getFloat(15),
 		WingspanFtWithWingletsSharklets:    getFloat(16),
 		LengthFt:                           getFloat(17),
@@ -181,8 +182,8 @@ func parseRow(row []string) AircraftData {
 		WheelbaseFt:                        getFloat(19),
 		CockpitToMainGearFt:                getFloat(20),
 		MainGearWidthFt:                    getFloat(21),
-		MTOWLB:                             getInt(22),
-		MALWLB:                             getInt(23),
+		MTOWLB:                             getInt32(22),
+		MALWLB:                             getInt32(23),
 		MainGearConfig:                     getString(24),
 		ICAOWTC:                            getString(25),
 		ParkingAreaFt2:                     getFloat(26),
@@ -196,90 +197,89 @@ func parseRow(row []string) AircraftData {
 		SRS:                                getString(34),
 		LAHSO:                              getString(35),
 		FAARegistry:                        getString(36),
-		RegistrationCount:                  getInt(37),
-		TMFSOperationsFY24:                 getInt(38),
+		RegistrationCount:                  getInt32(37),
+		TMFSOperationsFY24:                 getInt32(38),
 		Remarks:                            getString(39),
 		LastUpdate:                         getString(40),
 	}
 }
 
-func insertAircraftData(ctx context.Context, pool *pgxpool.Pool, aircraft AircraftData) error {
-	query := `
-		INSERT INTO aircraft_data (
-			icao_code, faa_designator, manufacturer, model_faa, model_bada,
-			physical_class_engine, num_engines, aac, aac_minimum, aac_maximum,
-			adg, tdg, approach_speed_knot, approach_speed_minimum_knot, approach_speed_maximum_knot,
-			wingspan_ft_without_winglets_sharklets, wingspan_ft_with_winglets_sharklets,
-			length_ft, tail_height_at_oew_ft, wheelbase_ft, cockpit_to_main_gear_ft,
-			main_gear_width_ft, mtow_lb, malw_lb, main_gear_config, icao_wtc,
-			parking_area_ft2, class, faa_weight, cwt, one_half_wake_category,
-			two_wake_category_appx_a, two_wake_category_appx_b, rotor_diameter_ft,
-			srs, lahso, faa_registry, registration_count, tmfs_operations_fy24,
-			remarks, last_update
-		) VALUES (
-			$1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15,
-			$16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28,
-			$29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41
-		)
-		ON CONFLICT (icao_code, faa_designator) DO UPDATE SET
-			manufacturer = EXCLUDED.manufacturer,
-			model_faa = EXCLUDED.model_faa,
-			model_bada = EXCLUDED.model_bada,
-			physical_class_engine = EXCLUDED.physical_class_engine,
-			num_engines = EXCLUDED.num_engines,
-			aac = EXCLUDED.aac,
-			aac_minimum = EXCLUDED.aac_minimum,
-			aac_maximum = EXCLUDED.aac_maximum,
-			adg = EXCLUDED.adg,
-			tdg = EXCLUDED.tdg,
-			approach_speed_knot = EXCLUDED.approach_speed_knot,
-			approach_speed_minimum_knot = EXCLUDED.approach_speed_minimum_knot,
-			approach_speed_maximum_knot = EXCLUDED.approach_speed_maximum_knot,
-			wingspan_ft_without_winglets_sharklets = EXCLUDED.wingspan_ft_without_winglets_sharklets,
-			wingspan_ft_with_winglets_sharklets = EXCLUDED.wingspan_ft_with_winglets_sharklets,
-			length_ft = EXCLUDED.length_ft,
-			tail_height_at_oew_ft = EXCLUDED.tail_height_at_oew_ft,
-			wheelbase_ft = EXCLUDED.wheelbase_ft,
-			cockpit_to_main_gear_ft = EXCLUDED.cockpit_to_main_gear_ft,
-			main_gear_width_ft = EXCLUDED.main_gear_width_ft,
-			mtow_lb = EXCLUDED.mtow_lb,
-			malw_lb = EXCLUDED.malw_lb,
-			main_gear_config = EXCLUDED.main_gear_config,
-			icao_wtc = EXCLUDED.icao_wtc,
-			parking_area_ft2 = EXCLUDED.parking_area_ft2,
-			class = EXCLUDED.class,
-			faa_weight = EXCLUDED.faa_weight,
-			cwt = EXCLUDED.cwt,
-			one_half_wake_category = EXCLUDED.one_half_wake_category,
-			two_wake_category_appx_a = EXCLUDED.two_wake_category_appx_a,
-			two_wake_category_appx_b = EXCLUDED.two_wake_category_appx_b,
-			rotor_diameter_ft = EXCLUDED.rotor_diameter_ft,
-			srs = EXCLUDED.srs,
-			lahso = EXCLUDED.lahso,
-			faa_registry = EXCLUDED.faa_registry,
-			registration_count = EXCLUDED.registration_count,
-			tmfs_operations_fy24 = EXCLUDED.tmfs_operations_fy24,
-			remarks = EXCLUDED.remarks,
-			last_update = EXCLUDED.last_update,
-			updated_at = CURRENT_TIMESTAMP
-	`
+func insertAircraftData(ctx context.Context, database *database.Database, aircraft AircraftData) error {
+	// Helper function to convert string to pgtype.Text
+	stringToPgText := func(s string) pgtype.Text {
+		if s == "" {
+			return pgtype.Text{Valid: false}
+		}
+		return pgtype.Text{String: s, Valid: true}
+	}
 
-	// Use a context with timeout for the query
-	queryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
+	// Helper function to convert *int32 to pgtype.Int4
+	int32ToPgInt4 := func(i *int32) pgtype.Int4 {
+		if i == nil {
+			return pgtype.Int4{Valid: false}
+		}
+		return pgtype.Int4{Int32: *i, Valid: true}
+	}
 
-	_, err := pool.Exec(queryCtx, query,
-		aircraft.ICAOCode, aircraft.FAADesignator, aircraft.Manufacturer, aircraft.ModelFAA, aircraft.ModelBADA,
-		aircraft.PhysicalClassEngine, aircraft.NumEngines, aircraft.AAC, aircraft.AACMinimum, aircraft.AACMaximum,
-		aircraft.ADG, aircraft.TDG, aircraft.ApproachSpeedKnot, aircraft.ApproachSpeedMinimumKnot, aircraft.ApproachSpeedMaximumKnot,
-		aircraft.WingspanFtWithoutWingletsSharklets, aircraft.WingspanFtWithWingletsSharklets,
-		aircraft.LengthFt, aircraft.TailHeightAtOEWFt, aircraft.WheelbaseFt, aircraft.CockpitToMainGearFt,
-		aircraft.MainGearWidthFt, aircraft.MTOWLB, aircraft.MALWLB, aircraft.MainGearConfig, aircraft.ICAOWTC,
-		aircraft.ParkingAreaFt2, aircraft.Class, aircraft.FAAWeight, aircraft.CWT, aircraft.OneHalfWakeCategory,
-		aircraft.TwoWakeCategoryAppxA, aircraft.TwoWakeCategoryAppxB, aircraft.RotorDiameterFt,
-		aircraft.SRS, aircraft.LAHSO, aircraft.FAARegistry, aircraft.RegistrationCount, aircraft.TMFSOperationsFY24,
-		aircraft.Remarks, aircraft.LastUpdate,
-	)
+	// Helper function to convert *float64 to pgtype.Numeric
+	float64ToPgNumeric := func(f *float64) pgtype.Numeric {
+		if f == nil {
+			return pgtype.Numeric{Valid: false}
+		}
+		var numeric pgtype.Numeric
+		err := numeric.Scan(*f)
+		if err != nil {
+			return pgtype.Numeric{Valid: false}
+		}
+		return numeric
+	}
 
+	// Convert our internal struct to SQLC parameters
+	params := db.UpsertAircraftDataParams{
+		IcaoCode:                         stringToPgText(aircraft.ICAOCode),
+		FaaDesignator:                    stringToPgText(aircraft.FAADesignator),
+		Manufacturer:                     stringToPgText(aircraft.Manufacturer),
+		ModelFaa:                         stringToPgText(aircraft.ModelFAA),
+		ModelBada:                        stringToPgText(aircraft.ModelBADA),
+		PhysicalClassEngine:              stringToPgText(aircraft.PhysicalClassEngine),
+		NumEngines:                       int32ToPgInt4(aircraft.NumEngines),
+		Aac:                              stringToPgText(aircraft.AAC),
+		AacMinimum:                       stringToPgText(aircraft.AACMinimum),
+		AacMaximum:                       stringToPgText(aircraft.AACMaximum),
+		Adg:                              stringToPgText(aircraft.ADG),
+		Tdg:                              stringToPgText(aircraft.TDG),
+		ApproachSpeedKnot:                int32ToPgInt4(aircraft.ApproachSpeedKnot),
+		ApproachSpeedMinimumKnot:         int32ToPgInt4(aircraft.ApproachSpeedMinimumKnot),
+		ApproachSpeedMaximumKnot:         int32ToPgInt4(aircraft.ApproachSpeedMaximumKnot),
+		WingspanFtWithoutWingletsSharklets: float64ToPgNumeric(aircraft.WingspanFtWithoutWingletsSharklets),
+		WingspanFtWithWingletsSharklets:    float64ToPgNumeric(aircraft.WingspanFtWithWingletsSharklets),
+		LengthFt:                           float64ToPgNumeric(aircraft.LengthFt),
+		TailHeightAtOewFt:                  float64ToPgNumeric(aircraft.TailHeightAtOEWFt),
+		WheelbaseFt:                        float64ToPgNumeric(aircraft.WheelbaseFt),
+		CockpitToMainGearFt:                float64ToPgNumeric(aircraft.CockpitToMainGearFt),
+		MainGearWidthFt:                    float64ToPgNumeric(aircraft.MainGearWidthFt),
+		MtowLb:                             int32ToPgInt4(aircraft.MTOWLB),
+		MalwLb:                             int32ToPgInt4(aircraft.MALWLB),
+		MainGearConfig:                     stringToPgText(aircraft.MainGearConfig),
+		IcaoWtc:                            stringToPgText(aircraft.ICAOWTC),
+		ParkingAreaFt2:                     float64ToPgNumeric(aircraft.ParkingAreaFt2),
+		Class:                              stringToPgText(aircraft.Class),
+		FaaWeight:                          stringToPgText(aircraft.FAAWeight),
+		Cwt:                                stringToPgText(aircraft.CWT),
+		OneHalfWakeCategory:                stringToPgText(aircraft.OneHalfWakeCategory),
+		TwoWakeCategoryAppxA:               stringToPgText(aircraft.TwoWakeCategoryAppxA),
+		TwoWakeCategoryAppxB:               stringToPgText(aircraft.TwoWakeCategoryAppxB),
+		RotorDiameterFt:                    float64ToPgNumeric(aircraft.RotorDiameterFt),
+		Srs:                                stringToPgText(aircraft.SRS),
+		Lahso:                              stringToPgText(aircraft.LAHSO),
+		FaaRegistry:                        stringToPgText(aircraft.FAARegistry),
+		RegistrationCount:                  int32ToPgInt4(aircraft.RegistrationCount),
+		TmfsOperationsFy24:                 int32ToPgInt4(aircraft.TMFSOperationsFY24),
+		Remarks:                            stringToPgText(aircraft.Remarks),
+		LastUpdate:                         stringToPgText(aircraft.LastUpdate),
+	}
+
+	// Use SQLC-generated upsert function
+	_, err := database.Queries.UpsertAircraftData(ctx, params)
 	return err
 }
