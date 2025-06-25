@@ -1,3 +1,11 @@
+# Environment variables for development
+export POSTGRES_USER ?= postgres
+export POSTGRES_PASSWORD ?= postgres
+export POSTGRES_DB ?= faa_aircraft
+export DB_HOST ?= localhost
+export DB_PORT ?= 5432
+export DB_SSLMODE ?= disable
+
 # Go parameters
 GOCMD=go
 GOBUILD=$(GOCMD) build
@@ -13,17 +21,24 @@ MIGRATE_BINARY=faa-migrate
 # Build directory
 BUILD_DIR=bin
 
-.PHONY: all build clean test deps web migrate import-data clear-data count-data dev-setup sqlc-generate
+.PHONY: all build clean test deps web migrate import-data clear-data count-data dev-setup sqlc-generate templ-generate
 
 # Default target
 all: build
+
+# Generate templ templates
+templ-generate:
+	templ generate
 
 # Generate SQLC code
 sqlc-generate:
 	sqlc generate
 
+# Generate all code
+generate: templ-generate sqlc-generate
+
 # Build all binaries
-build: sqlc-generate web-build migrate-build
+build: generate web-build migrate-build
 
 # Build web server
 web-build:
@@ -59,11 +74,11 @@ dev-setup: deps
 	@echo "Start web server: make web"
 
 # Run web server
-web: sqlc-generate
+web: generate
 	$(GOCMD) run cmd/web/main.go
 
 # Run migration tool
-migrate: sqlc-generate
+migrate: generate
 	$(GOCMD) run cmd/migrate/main.go $(ARGS)
 
 # Database operations
@@ -87,17 +102,17 @@ migrate-reset:
 	goose -dir migrations postgres reset
 
 # Data operations
-import-data: sqlc-generate
+import-data: generate
 	$(GOCMD) run cmd/migrate/main.go -action=import -file=aircraft_data.xlsx
 
-clear-data: sqlc-generate
+clear-data: generate
 	$(GOCMD) run cmd/migrate/main.go -action=clear
 
-count-data: sqlc-generate
+count-data: generate
 	$(GOCMD) run cmd/migrate/main.go -action=count
 
 # Development workflow shortcuts
-dev: db-up migrate-up sqlc-generate import-data web
+dev: db-up migrate-up generate import-data web
 
 # API testing (requires curl)
 test-api:
@@ -110,11 +125,14 @@ test-api:
 install-tools:
 	go install github.com/pressly/goose/v3/cmd/goose@latest
 	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
+	go install github.com/a-h/templ/cmd/templ@latest
 
 # Help
 help:
 	@echo "Available commands:"
 	@echo "  build          - Build all binaries"
+	@echo "  generate       - Generate all code (templ + sqlc)"
+	@echo "  templ-generate - Generate templ templates"
 	@echo "  sqlc-generate  - Generate SQLC code from SQL queries"
 	@echo "  web-build      - Build web server binary"
 	@echo "  migrate-build  - Build migration tool binary"

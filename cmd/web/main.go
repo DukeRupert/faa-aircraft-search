@@ -41,6 +41,10 @@ func main() {
 	// Initialize handler with database
 	h := handler.New(db)
 
+	// Web routes (HTML pages)
+	e.GET("/", h.Home)
+	e.GET("/test", h.SimpleTest)
+
 	// Base health check route
 	e.GET("/health", h.HealthCheck)
 
@@ -54,8 +58,8 @@ func main() {
 		}
 	}
 
-	// Static file serving (for frontend)
-	e.Static("/", "web/static")
+	// Static file serving (for any additional static assets)
+	e.Static("/static", "web/static")
 
 	// Start server in a goroutine
 	go func() {
