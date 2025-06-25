@@ -13,13 +13,17 @@ MIGRATE_BINARY=faa-migrate
 # Build directory
 BUILD_DIR=bin
 
-.PHONY: all build clean test deps web migrate import-data clear-data count-data dev-setup
+.PHONY: all build clean test deps web migrate import-data clear-data count-data dev-setup sqlc-generate
 
 # Default target
 all: build
 
+# Generate SQLC code
+sqlc-generate:
+	sqlc generate
+
 # Build all binaries
-build: web-build migrate-build
+build: sqlc-generate web-build migrate-build
 
 # Build web server
 web-build:
@@ -50,15 +54,16 @@ dev-setup: deps
 	@echo "Setting up development environment..."
 	@echo "Make sure Docker is running and then run: make db-up"
 	@echo "Then run migrations: make migrate-up"
+	@echo "Generate SQLC code: make sqlc-generate"
 	@echo "Import data: make import-data"
 	@echo "Start web server: make web"
 
 # Run web server
-web:
+web: sqlc-generate
 	$(GOCMD) run cmd/web/main.go
 
 # Run migration tool
-migrate:
+migrate: sqlc-generate
 	$(GOCMD) run cmd/migrate/main.go $(ARGS)
 
 # Database operations
@@ -82,33 +87,35 @@ migrate-reset:
 	goose -dir migrations postgres reset
 
 # Data operations
-import-data:
+import-data: sqlc-generate
 	$(GOCMD) run cmd/migrate/main.go -action=import -file=aircraft_data.xlsx
 
-clear-data:
+clear-data: sqlc-generate
 	$(GOCMD) run cmd/migrate/main.go -action=clear
 
-count-data:
+count-data: sqlc-generate
 	$(GOCMD) run cmd/migrate/main.go -action=count
 
 # Development workflow shortcuts
-dev: db-up migrate-up import-data web
+dev: db-up migrate-up sqlc-generate import-data web
 
 # API testing (requires curl)
 test-api:
 	@echo "Testing health endpoint..."
-	curl -s http://localhost:8080/api/health | jq .
+	curl -s http://localhost:8080/health | jq .
 	@echo "\nTesting search endpoint..."
-	curl -s "http://localhost:8080/api/aircraft/search?q=boeing&limit=5" | jq .
+	curl -s "http://localhost:8080/api/v1/aircraft/search?q=boeing&limit=5" | jq .
 
 # Install development tools
 install-tools:
 	go install github.com/pressly/goose/v3/cmd/goose@latest
+	go install github.com/sqlc-dev/sqlc/cmd/sqlc@latest
 
 # Help
 help:
 	@echo "Available commands:"
 	@echo "  build          - Build all binaries"
+	@echo "  sqlc-generate  - Generate SQLC code from SQL queries"
 	@echo "  web-build      - Build web server binary"
 	@echo "  migrate-build  - Build migration tool binary"
 	@echo "  clean          - Clean build artifacts"
@@ -126,6 +133,6 @@ help:
 	@echo "  import-data    - Import aircraft data from Excel"
 	@echo "  clear-data     - Clear all aircraft data"
 	@echo "  count-data     - Count aircraft records"
-	@echo "  dev            - Full development setup (db + migrate + import + web)"
+	@echo "  dev            - Full development setup (db + migrate + sqlc + import + web)"
 	@echo "  test-api       - Test API endpoints"
 	@echo "  install-tools  - Install development tools"

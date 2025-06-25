@@ -11,45 +11,56 @@ import (
 
 	"github.com/dukerupert/faa-aircraft-search/internal/database"
 	"github.com/dukerupert/faa-aircraft-search/internal/handler"
+	"github.com/labstack/echo/v4"
+	"github.com/labstack/echo/v4/middleware"
 )
 
 func main() {
 	ctx := context.Background()
 
 	// Initialize database connection
-	pool, err := database.InitDatabase(ctx)
+	db, err := database.InitDatabase(ctx)
 	if err != nil {
 		log.Fatal("Failed to initialize database:", err)
 	}
-	defer database.Close(pool)
+	defer db.Close()
 
-	// Initialize handler with database pool
-	h := handler.New(pool)
+	// Create Echo instance
+	e := echo.New()
 
-	// Setup routes
-	mux := http.NewServeMux()
-	
-	// API routes
-	mux.HandleFunc("/api/aircraft/search", h.SearchAircraft)
-	mux.HandleFunc("/api/aircraft/{id}", h.GetAircraft)
-	mux.HandleFunc("/api/health", h.HealthCheck)
-	
-	// Static file serving (for frontend)
-	mux.Handle("/", http.FileServer(http.Dir("./web/static/")))
+	// Middleware
+	e.Use(middleware.Logger())
+	e.Use(middleware.Recover())
+	e.Use(middleware.CORS())
 
-	// Server configuration
-	server := &http.Server{
-		Addr:         ":8080",
-		Handler:      mux,
-		ReadTimeout:  15 * time.Second,
-		WriteTimeout: 15 * time.Second,
-		IdleTimeout:  60 * time.Second,
+	// Request timeout middleware
+	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+		Timeout: 30 * time.Second,
+	}))
+
+	// Initialize handler with database
+	h := handler.New(db)
+
+	// Base health check route
+	e.GET("/health", h.HealthCheck)
+
+	// API v1 routes
+	v1 := e.Group("/api/v1")
+	{
+		aircraft := v1.Group("/aircraft")
+		{
+			aircraft.GET("/search", h.SearchAircraft)
+			aircraft.GET("/:id", h.GetAircraft)
+		}
 	}
+
+	// Static file serving (for frontend)
+	e.Static("/", "web/static")
 
 	// Start server in a goroutine
 	go func() {
 		log.Println("Starting server on :8080")
-		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		if err := e.Start(":8080"); err != nil && err != http.ErrServerClosed {
 			log.Fatal("Failed to start server:", err)
 		}
 	}()
@@ -62,10 +73,10 @@ func main() {
 	log.Println("Shutting down server...")
 
 	// Graceful shutdown with timeout
-	shutdownCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
-	if err := server.Shutdown(shutdownCtx); err != nil {
+	if err := e.Shutdown(shutdownCtx); err != nil {
 		log.Fatal("Server forced to shutdown:", err)
 	}
 

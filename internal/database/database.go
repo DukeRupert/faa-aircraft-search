@@ -7,6 +7,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/dukerupert/faa-aircraft-search/internal/db"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -18,6 +19,12 @@ type Config struct {
 	Password string
 	DBName   string
 	SSLMode  string
+}
+
+// Database wraps the connection pool and SQLC queries
+type Database struct {
+	Pool    *pgxpool.Pool
+	Queries *db.Queries
 }
 
 // GetConfigFromEnv reads database configuration from environment variables
@@ -46,7 +53,7 @@ func GetConfigFromEnv() *Config {
 }
 
 // InitDatabase initializes the database connection and creates the database if it doesn't exist
-func InitDatabase(ctx context.Context) (*pgxpool.Pool, error) {
+func InitDatabase(ctx context.Context) (*Database, error) {
 	config := GetConfigFromEnv()
 
 	// First, connect to the default 'postgres' database to check if our target database exists
@@ -128,8 +135,56 @@ func InitDatabase(ctx context.Context) (*pgxpool.Pool, error) {
 		return nil, fmt.Errorf("failed to ping database: %w", err)
 	}
 
+	// Create SQLC queries instance
+	queries := db.New(pool)
+
 	log.Printf("Successfully connected to database '%s'", config.DBName)
-	return pool, nil
+	
+	return &Database{
+		Pool:    pool,
+		Queries: queries,
+	}, nil
+}
+
+// BeginTx starts a new transaction and returns a Queries instance that uses the transaction
+func (d *Database) BeginTx(ctx context.Context) (pgx.Tx, *db.Queries, error) {
+	tx, err := d.Pool.Begin(ctx)
+	if err != nil {
+		return nil, nil, fmt.Errorf("failed to begin transaction: %w", err)
+	}
+	
+	queries := d.Queries.WithTx(tx)
+	return tx, queries, nil
+}
+
+// Ping tests the database connection
+func (d *Database) Ping(ctx context.Context) error {
+	return d.Pool.Ping(ctx)
+}
+
+// Close closes the database connection pool
+func (d *Database) Close() {
+	if d.Pool != nil {
+		d.Pool.Close()
+		log.Println("Database connection pool closed")
+	}
+}
+
+// Legacy function for backward compatibility
+func InitDatabaseLegacy(ctx context.Context) (*pgxpool.Pool, error) {
+	db, err := InitDatabase(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return db.Pool, nil
+}
+
+// Legacy function for backward compatibility
+func Close(pool *pgxpool.Pool) {
+	if pool != nil {
+		pool.Close()
+		log.Println("Database connection pool closed")
+	}
 }
 
 // getEnvOrDefault returns the environment variable value or a default value if not set
@@ -161,12 +216,4 @@ func isValidDatabaseName(name string) bool {
 	}
 	
 	return true
-}
-
-// Close closes the database connection pool
-func Close(pool *pgxpool.Pool) {
-	if pool != nil {
-		pool.Close()
-		log.Println("Database connection pool closed")
-	}
 }
