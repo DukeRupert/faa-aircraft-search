@@ -9,6 +9,7 @@ import (
 
 	"github.com/dukerupert/faa-aircraft-search/internal/database"
 	"github.com/dukerupert/faa-aircraft-search/internal/db"
+	"github.com/dukerupert/faa-aircraft-search/internal/middleware"
 	"github.com/jackc/pgx/v5"
 	"github.com/labstack/echo/v4"
 )
@@ -52,6 +53,7 @@ func New(db *database.Database) *Handlers {
 
 // SearchAircraft handles GET /api/aircraft/search
 func (h *Handlers) SearchAircraft(c echo.Context) error {
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 10*time.Second)
 	defer cancel()
 
@@ -62,6 +64,7 @@ func (h *Handlers) SearchAircraft(c echo.Context) error {
 	}
 
 	if err := c.Bind(req); err != nil {
+		middleware.RecordDatabaseQuery("search", time.Since(start), false)
 		return c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_request",
 			Message: "Invalid query parameters",
@@ -82,14 +85,21 @@ func (h *Handlers) SearchAircraft(c echo.Context) error {
 	var aircraft []db.AircraftDatum
 	var total int64
 	var err error
+	var queryType string
 
 	if req.Query == "" {
 		// Get all aircraft with pagination
+		queryType = "browse"
+		
+		queryStart := time.Now()
 		aircraft, err = h.db.Queries.GetAllAircraft(ctx, db.GetAllAircraftParams{
 			Limit:  limit,
 			Offset: offset,
 		})
+		middleware.RecordDatabaseQuery("get_all", time.Since(queryStart), err == nil)
+		
 		if err != nil {
+			middleware.RecordAircraftSearch(queryType, time.Since(start))
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{
 				Error:   "database_error",
 				Message: "Failed to retrieve aircraft data",
@@ -97,8 +107,12 @@ func (h *Handlers) SearchAircraft(c echo.Context) error {
 		}
 
 		// Get total count
+		countStart := time.Now()
 		total, err = h.db.Queries.CountAircraft(ctx)
+		middleware.RecordDatabaseQuery("count", time.Since(countStart), err == nil)
+		
 		if err != nil {
+			middleware.RecordAircraftSearch(queryType, time.Since(start))
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{
 				Error:   "database_error",
 				Message: "Failed to count aircraft records",
@@ -106,14 +120,19 @@ func (h *Handlers) SearchAircraft(c echo.Context) error {
 		}
 	} else {
 		// Search aircraft with the query
+		queryType = "search"
 		searchTerm := "%" + strings.ToUpper(req.Query) + "%"
 		
+		searchStart := time.Now()
 		aircraft, err = h.db.Queries.SearchAircraft(ctx, db.SearchAircraftParams{
 			SearchTerm: searchTerm,
 			Limit:      limit,
 			Offset:     offset,
 		})
+		middleware.RecordDatabaseQuery("search", time.Since(searchStart), err == nil)
+		
 		if err != nil {
+			middleware.RecordAircraftSearch(queryType, time.Since(start))
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{
 				Error:   "database_error",
 				Message: "Failed to search aircraft data",
@@ -121,14 +140,21 @@ func (h *Handlers) SearchAircraft(c echo.Context) error {
 		}
 
 		// Get search result count
+		countStart := time.Now()
 		total, err = h.db.Queries.CountSearchAircraft(ctx, searchTerm)
+		middleware.RecordDatabaseQuery("search_count", time.Since(countStart), err == nil)
+		
 		if err != nil {
+			middleware.RecordAircraftSearch(queryType, time.Since(start))
 			return c.JSON(http.StatusInternalServerError, ErrorResponse{
 				Error:   "database_error",
 				Message: "Failed to count search results",
 			})
 		}
 	}
+
+	// Record successful search metrics
+	middleware.RecordAircraftSearch(queryType, time.Since(start))
 
 	response := SearchResponse{
 		Aircraft: aircraft,
@@ -142,6 +168,7 @@ func (h *Handlers) SearchAircraft(c echo.Context) error {
 
 // GetAircraft handles GET /api/aircraft/:id
 func (h *Handlers) GetAircraft(c echo.Context) error {
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 5*time.Second)
 	defer cancel()
 
@@ -149,6 +176,7 @@ func (h *Handlers) GetAircraft(c echo.Context) error {
 	idParam := c.Param("id")
 	id, err := strconv.ParseInt(idParam, 10, 32)
 	if err != nil {
+		middleware.RecordDatabaseQuery("get_by_id", time.Since(start), false)
 		return c.JSON(http.StatusBadRequest, ErrorResponse{
 			Error:   "invalid_id",
 			Message: "Invalid aircraft ID",
@@ -156,6 +184,8 @@ func (h *Handlers) GetAircraft(c echo.Context) error {
 	}
 
 	aircraft, err := h.db.Queries.GetAircraft(ctx, int32(id))
+	middleware.RecordDatabaseQuery("get_by_id", time.Since(start), err == nil)
+	
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return c.JSON(http.StatusNotFound, ErrorResponse{
@@ -174,12 +204,14 @@ func (h *Handlers) GetAircraft(c echo.Context) error {
 
 // HealthCheck handles GET /api/health
 func (h *Handlers) HealthCheck(c echo.Context) error {
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 3*time.Second)
 	defer cancel()
 
 	// Test database connection
 	err := h.db.Ping(ctx)
 	if err != nil {
+		middleware.RecordDatabaseQuery("health_check", time.Since(start), false)
 		return c.JSON(http.StatusServiceUnavailable, ErrorResponse{
 			Error:   "database_unavailable",
 			Message: "Database connection failed",
@@ -188,12 +220,17 @@ func (h *Handlers) HealthCheck(c echo.Context) error {
 
 	// Get record count
 	count, err := h.db.Queries.CountAircraft(ctx)
+	middleware.RecordDatabaseQuery("health_check", time.Since(start), err == nil)
+	
 	if err != nil {
 		return c.JSON(http.StatusServiceUnavailable, ErrorResponse{
 			Error:   "database_query_failed",
 			Message: "Failed to query database",
 		})
 	}
+
+	// Update the total aircraft count metric
+	middleware.UpdateTotalAircraftCount(float64(count))
 
 	response := HealthResponse{
 		Status:        "healthy",

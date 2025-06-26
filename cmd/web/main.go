@@ -11,8 +11,10 @@ import (
 
 	"github.com/dukerupert/faa-aircraft-search/internal/database"
 	"github.com/dukerupert/faa-aircraft-search/internal/handler"
+	"github.com/dukerupert/faa-aircraft-search/internal/middleware"
 	"github.com/labstack/echo/v4"
-	"github.com/labstack/echo/v4/middleware"
+	echomiddleware "github.com/labstack/echo/v4/middleware"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -25,28 +27,41 @@ func main() {
 	}
 	defer db.Close()
 
+	// Update total aircraft count metric on startup
+	if count, err := db.Queries.CountAircraft(ctx); err == nil {
+		middleware.UpdateTotalAircraftCount(float64(count))
+	}
+
 	// Create Echo instance
 	e := echo.New()
 
 	// Middleware
-	e.Use(middleware.Logger())
-	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(echomiddleware.Logger())
+	e.Use(echomiddleware.Recover())
+	e.Use(echomiddleware.CORS())
+
+	// Prometheus metrics middleware
+	e.Use(middleware.PrometheusMiddleware())
 
 	// Request timeout middleware
-	e.Use(middleware.TimeoutWithConfig(middleware.TimeoutConfig{
+	e.Use(echomiddleware.TimeoutWithConfig(echomiddleware.TimeoutConfig{
 		Timeout: 30 * time.Second,
 	}))
 
+	// Static file serving (for any additional static assets)
+	e.Static("/static", "web/static")
+
 	// Initialize handler with database
 	h := handler.New(db)
+
+	// Metrics endpoint (exclude from metrics middleware to avoid recursion)
+	e.GET("/metrics", echo.WrapHandler(promhttp.Handler()))
 
 	// Web routes (HTML pages)
 	e.GET("/", h.Home)
 	e.GET("/search", h.Search)
 	e.GET("/aircraft-list", h.AircraftList)
 	e.GET("/aircraft-details/:id", h.AircraftDetails)
-	e.GET("/test", h.SimpleTest)
 
 	// Base health check route
 	e.GET("/health", h.HealthCheck)

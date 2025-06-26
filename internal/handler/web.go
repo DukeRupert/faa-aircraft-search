@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/dukerupert/faa-aircraft-search/internal/db"
+	"github.com/dukerupert/faa-aircraft-search/internal/middleware"
 	"github.com/dukerupert/faa-aircraft-search/web/templates/components"
 	"github.com/dukerupert/faa-aircraft-search/web/templates/pages"
 	"github.com/jackc/pgx/v5"
@@ -153,6 +154,7 @@ func (h *Handlers) AircraftList(c echo.Context) error {
 
 // AircraftDetails handles GET /aircraft-details/:id
 func (h *Handlers) AircraftDetails(c echo.Context) error {
+	start := time.Now()
 	ctx, cancel := context.WithTimeout(c.Request().Context(), 5*time.Second)
 	defer cancel()
 
@@ -160,10 +162,13 @@ func (h *Handlers) AircraftDetails(c echo.Context) error {
 	idParam := c.Param("id")
 	id, err := strconv.ParseInt(idParam, 10, 32)
 	if err != nil {
+		middleware.RecordDatabaseQuery("get_details", time.Since(start), false)
 		return c.String(http.StatusBadRequest, "Invalid aircraft ID")
 	}
 
 	aircraft, err := h.db.Queries.GetAircraft(ctx, int32(id))
+	middleware.RecordDatabaseQuery("get_details", time.Since(start), err == nil)
+	
 	if err != nil {
 		if err == pgx.ErrNoRows {
 			return c.String(http.StatusNotFound, "Aircraft not found")
@@ -171,10 +176,8 @@ func (h *Handlers) AircraftDetails(c echo.Context) error {
 		return c.String(http.StatusInternalServerError, "Database error")
 	}
 
-	return components.AircraftDetails(aircraft).Render(ctx, c.Response().Writer)
-}
+	// Record detail view metric
+	middleware.RecordAircraftDetailView()
 
-// SimpleTest handles a simple test endpoint
-func (h *Handlers) SimpleTest(c echo.Context) error {
-	return components.SimpleSearchResults("This is a simple test message!").Render(c.Request().Context(), c.Response().Writer)
+	return components.AircraftDetails(aircraft).Render(ctx, c.Response().Writer)
 }
