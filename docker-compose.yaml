@@ -10,7 +10,7 @@ services:
       - POSTGRES_USER=postgres
       - POSTGRES_PASSWORD=postgres
     # ports:
-    #   - "5432:5432"
+    #   - "5432:5432"  # Commented out for production security
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
@@ -25,7 +25,7 @@ services:
 
   # Web Application
   web:
-    image: ghcr.io/dukerupert/faa-aircraft-search:latest
+    image: dukerupert/faa-aircraft-search:latest
     container_name: faa-aircraft-search-web
     environment:
       - POSTGRES_DB=faa_aircraft
