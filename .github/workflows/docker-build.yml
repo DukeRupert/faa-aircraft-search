@@ -1,0 +1,82 @@
+name: Build and Push Docker Image
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v4
+      with:
+        go-version: '1.24.3'
+
+    - name: Install templ
+      run: go install github.com/a-h/templ/cmd/templ@latest
+
+    - name: Generate templates
+      run: templ generate
+
+    - name: Run tests
+      run: go test -v ./...
+
+    - name: Log in to Container Registry
+      if: github.event_name != 'pull_request'
+      uses: docker/login-action@v3
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Extract metadata
+      id: meta
+      uses: docker/metadata-action@v5
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=ref,event=branch
+          type=ref,event=pr
+          type=sha,prefix={{branch}}-
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v3
+
+    - name: Build and push Docker image
+      uses: docker/build-push-action@v5
+      with:
+        context: .
+        platforms: linux/amd64,linux/arm64
+        push: ${{ github.event_name != 'pull_request' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha
+        cache-to: type=gha,mode=max
+
+    - name: Generate deployment summary
+      if: github.event_name != 'pull_request'
+      run: |
+        echo "## 🚀 Deployment Summary" >> $GITHUB_STEP_SUMMARY
+        echo "**Image:** \`${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest\`" >> $GITHUB_STEP_SUMMARY
+        echo "**Commit:** ${{ github.sha }}" >> $GITHUB_STEP_SUMMARY
+        echo "**Branch:** ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📋 Next Steps" >> $GITHUB_STEP_SUMMARY
+        echo "1. Watchtower will automatically pull and restart the container within 5 minutes" >> $GITHUB_STEP_SUMMARY
+        echo "2. Monitor deployment at your server's health endpoint" >> $GITHUB_STEP_SUMMARY
+        echo "3. Check logs if needed: \`docker logs faa-aircraft-search-web\`" >> $GITHUB_STEP_SUMMARY
