@@ -37,7 +37,7 @@ WORKDIR /root/
 COPY --from=builder /app/main .
 
 # Copy static files if they exist
-COPY --from=builder /app/web/static ./web/static 2>/dev/null || true
+COPY --from=builder /app/web ./web
 
 # Create a non-root user
 RUN addgroup -g 1001 -S appgroup && \
