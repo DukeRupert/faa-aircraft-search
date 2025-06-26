@@ -8,6 +8,8 @@ package layout
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
+import "github.com/dukerupert/faa-aircraft-search/web/templates/components"
+
 func Base(title string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -29,20 +31,20 @@ func Base(title string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><title>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<!doctype html><html lang=\"en\"><head><meta charset=\"UTF-8\"><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"><!-- Primary Meta Tags --><title>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout/base.templ`, Line: 9, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `web/templates/layout/base.templ`, Line: 13, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - FAA Aircraft Search</title><script src=\"https://unpkg.com/htmx.org@1.9.10\"></script><script src=\"https://unpkg.com/hyperscript.org@0.9.12\"></script><script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js\"></script><link href=\"https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css\" rel=\"stylesheet\"><style>\n\t\t\t\t.htmx-indicator {\n\t\t\t\t\topacity: 0;\n\t\t\t\t\ttransition: opacity 200ms ease-in;\n\t\t\t\t}\n\t\t\t\t.htmx-request .htmx-indicator {\n\t\t\t\t\topacity: 1;\n\t\t\t\t}\n\t\t\t\t.htmx-request.htmx-indicator {\n\t\t\t\t\topacity: 1;\n\t\t\t\t}\n\t\t\t</style></head><body class=\"bg-gray-50 min-h-screen\"><div class=\"container mx-auto px-4 py-8\"><header class=\"mb-8\"><h1 class=\"text-3xl font-bold text-gray-900\">FAA Aircraft Search</h1><p class=\"text-gray-600 mt-2\">Search and explore FAA aircraft database</p></header><main>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, " - FAA Aircraft Search</title><meta name=\"description\" content=\"Search and explore comprehensive aircraft data from the FAA Aircraft Characteristics Database. Find aircraft specifications, performance data, wake turbulence categories, and operational characteristics for aviation professionals.\"><meta name=\"keywords\" content=\"FAA aircraft database, aircraft characteristics, aviation data, aircraft specifications, wake turbulence, aircraft performance, air traffic control, ATC, aircraft search, aviation professionals\"><meta name=\"author\" content=\"FAA Aircraft Search\"><meta name=\"robots\" content=\"index, follow\"><!-- Canonical URL --><link rel=\"canonical\" href=\"https://aircraftdatabase.org/\"><!-- Open Graph / Facebook --><meta property=\"og:type\" content=\"website\"><meta property=\"og:url\" content=\"https://aircraftdatabase.org/\"><meta property=\"og:title\" content=\"{ title } - FAA Aircraft Search\"><meta property=\"og:description\" content=\"Search and explore comprehensive aircraft data from the FAA Aircraft Characteristics Database. Find aircraft specifications, performance data, and operational characteristics.\"><meta property=\"og:image\" content=\"https://aircraftdatabase.org/static/og-image.jpg\"><meta property=\"og:site_name\" content=\"FAA Aircraft Search\"><meta property=\"og:locale\" content=\"en_US\"><!-- Twitter --><meta property=\"twitter:card\" content=\"summary_large_image\"><meta property=\"twitter:url\" content=\"https://aircraftdatabase.org/\"><meta property=\"twitter:title\" content=\"{ title } - FAA Aircraft Search\"><meta property=\"twitter:description\" content=\"Search comprehensive aircraft data from the FAA Aircraft Characteristics Database. Aircraft specs, performance data, and operational characteristics.\"><meta property=\"twitter:image\" content=\"https://aircraftdatabase.org/static/twitter-image.jpg\"><!-- Structured Data - WebSite --><script type=\"application/ld+json\">\n\t\t\t{\n\t\t\t\t\"@context\": \"https://schema.org\",\n\t\t\t\t\"@type\": \"WebSite\",\n\t\t\t\t\"name\": \"FAA Aircraft Search\",\n\t\t\t\t\"description\": \"Search and explore comprehensive aircraft data from the FAA Aircraft Characteristics Database\",\n\t\t\t\t\"url\": \"https://aircraftdatabase.org/\",\n\t\t\t\t\"potentialAction\": {\n\t\t\t\t\t\"@type\": \"SearchAction\",\n\t\t\t\t\t\"target\": {\n\t\t\t\t\t\t\"@type\": \"EntryPoint\",\n\t\t\t\t\t\t\"urlTemplate\": \"https://aircraftdatabase.org/api/v1/aircraft/search?q={search_term_string}\"\n\t\t\t\t\t},\n\t\t\t\t\t\"query-input\": \"required name=search_term_string\"\n\t\t\t\t}\n\t\t\t}\n\t\t\t</script><!-- Structured Data - Dataset --><script type=\"application/ld+json\">\n\t\t\t{\n\t\t\t\t\"@context\": \"https://schema.org\",\n\t\t\t\t\"@type\": \"Dataset\",\n\t\t\t\t\"name\": \"FAA Aircraft Characteristics Database\",\n\t\t\t\t\"description\": \"Comprehensive database of aircraft characteristics including performance data, dimensions, wake turbulence categories, and operational specifications\",\n\t\t\t\t\"keywords\": [\"aircraft\", \"aviation\", \"FAA\", \"aircraft characteristics\", \"performance data\", \"wake turbulence\"],\n\t\t\t\t\"creator\": {\n\t\t\t\t\t\"@type\": \"Organization\",\n\t\t\t\t\t\"name\": \"Federal Aviation Administration\",\n\t\t\t\t\t\"url\": \"https://www.faa.gov/\"\n\t\t\t\t},\n\t\t\t\t\"distribution\": {\n\t\t\t\t\t\"@type\": \"DataDownload\",\n\t\t\t\t\t\"contentUrl\": \"https://www.faa.gov/airports/engineering/aircraft_char_database\"\n\t\t\t\t},\n\t\t\t\t\"temporalCoverage\": \"2024\",\n\t\t\t\t\"spatialCoverage\": \"United States\"\n\t\t\t}\n\t\t\t</script><!-- Favicon and Icons --><link rel=\"icon\" type=\"image/x-icon\" href=\"/static/favicon.ico\"><link rel=\"icon\" type=\"image/png\" sizes=\"32x32\" href=\"/static/favicon-32x32.png\"><link rel=\"icon\" type=\"image/png\" sizes=\"16x16\" href=\"/static/favicon-16x16.png\"><link rel=\"apple-touch-icon\" sizes=\"180x180\" href=\"/static/apple-touch-icon.png\"><link rel=\"manifest\" href=\"/static/site.webmanifest\"><!-- Preconnect for performance --><link rel=\"preconnect\" href=\"https://unpkg.com\"><link rel=\"preconnect\" href=\"https://cdn.jsdelivr.net\"><!-- Scripts and Styles --><script src=\"https://unpkg.com/htmx.org@1.9.10\"></script><script src=\"https://unpkg.com/hyperscript.org@0.9.12\"></script><script defer src=\"https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js\"></script><link href=\"https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css\" rel=\"stylesheet\"><!-- HTMX Indicator Styles --><style>\n\t\t\t\t.htmx-indicator {\n\t\t\t\t\topacity: 0;\n\t\t\t\t\ttransition: opacity 200ms ease-in;\n\t\t\t\t}\n\t\t\t\t.htmx-request .htmx-indicator {\n\t\t\t\t\topacity: 1;\n\t\t\t\t}\n\t\t\t\t.htmx-request.htmx-indicator {\n\t\t\t\t\topacity: 1;\n\t\t\t\t}\n\t\t\t</style></head><body class=\"bg-gray-50 min-h-screen\"><!-- Skip to main content for accessibility --><a href=\"#main-content\" class=\"sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded z-50\">Skip to main content</a><div class=\"container mx-auto px-4 py-8\"><header class=\"mb-8\"><h1 class=\"text-3xl font-bold text-gray-900\">FAA Aircraft Search</h1><p class=\"text-gray-600 mt-2\">Search and explore FAA aircraft database</p></header><main id=\"main-content\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -50,7 +52,15 @@ func Base(title string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main></div></body></html>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "</main>")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = components.DisclaimerFooter().Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 4, "</div></body></html>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

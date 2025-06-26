@@ -6,6 +6,8 @@ import "github.com/dukerupert/faa-aircraft-search/internal/db"
 
 templ Home(aircraft []db.AircraftDatum, total int64, page int, limit int) {
 	@layout.Base("Home") {
+		@components.DataAttribution()
+		
 		@components.SearchForm()
 		
 		@components.AircraftContainer(aircraft, total, page, limit)

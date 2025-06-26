@@ -1,16 +1,99 @@
 package layout
 
+import "github.com/dukerupert/faa-aircraft-search/web/templates/components"
+
 templ Base(title string) {
 	<!DOCTYPE html>
 	<html lang="en">
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+			
+			<!-- Primary Meta Tags -->
 			<title>{ title } - FAA Aircraft Search</title>
+			<meta name="description" content="Search and explore comprehensive aircraft data from the FAA Aircraft Characteristics Database. Find aircraft specifications, performance data, wake turbulence categories, and operational characteristics for aviation professionals."/>
+			<meta name="keywords" content="FAA aircraft database, aircraft characteristics, aviation data, aircraft specifications, wake turbulence, aircraft performance, air traffic control, ATC, aircraft search, aviation professionals"/>
+			<meta name="author" content="FAA Aircraft Search"/>
+			<meta name="robots" content="index, follow"/>
+			
+			<!-- Canonical URL -->
+			<link rel="canonical" href="https://aircraftdatabase.org/"/>
+			
+			<!-- Open Graph / Facebook -->
+			<meta property="og:type" content="website"/>
+			<meta property="og:url" content="https://aircraftdatabase.org/"/>
+			<meta property="og:title" content="{ title } - FAA Aircraft Search"/>
+			<meta property="og:description" content="Search and explore comprehensive aircraft data from the FAA Aircraft Characteristics Database. Find aircraft specifications, performance data, and operational characteristics."/>
+			<meta property="og:image" content="https://aircraftdatabase.org/static/og-image.jpg"/>
+			<meta property="og:site_name" content="FAA Aircraft Search"/>
+			<meta property="og:locale" content="en_US"/>
+			
+			<!-- Twitter -->
+			<meta property="twitter:card" content="summary_large_image"/>
+			<meta property="twitter:url" content="https://aircraftdatabase.org/"/>
+			<meta property="twitter:title" content="{ title } - FAA Aircraft Search"/>
+			<meta property="twitter:description" content="Search comprehensive aircraft data from the FAA Aircraft Characteristics Database. Aircraft specs, performance data, and operational characteristics."/>
+			<meta property="twitter:image" content="https://aircraftdatabase.org/static/twitter-image.jpg"/>
+			
+			<!-- Structured Data - WebSite -->
+			<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "WebSite",
+				"name": "FAA Aircraft Search",
+				"description": "Search and explore comprehensive aircraft data from the FAA Aircraft Characteristics Database",
+				"url": "https://aircraftdatabase.org/",
+				"potentialAction": {
+					"@type": "SearchAction",
+					"target": {
+						"@type": "EntryPoint",
+						"urlTemplate": "https://aircraftdatabase.org/api/v1/aircraft/search?q={search_term_string}"
+					},
+					"query-input": "required name=search_term_string"
+				}
+			}
+			</script>
+			
+			<!-- Structured Data - Dataset -->
+			<script type="application/ld+json">
+			{
+				"@context": "https://schema.org",
+				"@type": "Dataset",
+				"name": "FAA Aircraft Characteristics Database",
+				"description": "Comprehensive database of aircraft characteristics including performance data, dimensions, wake turbulence categories, and operational specifications",
+				"keywords": ["aircraft", "aviation", "FAA", "aircraft characteristics", "performance data", "wake turbulence"],
+				"creator": {
+					"@type": "Organization",
+					"name": "Federal Aviation Administration",
+					"url": "https://www.faa.gov/"
+				},
+				"distribution": {
+					"@type": "DataDownload",
+					"contentUrl": "https://www.faa.gov/airports/engineering/aircraft_char_database"
+				},
+				"temporalCoverage": "2024",
+				"spatialCoverage": "United States"
+			}
+			</script>
+			
+			<!-- Favicon and Icons -->
+			<link rel="icon" type="image/x-icon" href="/static/favicon.ico"/>
+			<link rel="icon" type="image/png" sizes="32x32" href="/static/favicon-32x32.png"/>
+			<link rel="icon" type="image/png" sizes="16x16" href="/static/favicon-16x16.png"/>
+			<link rel="apple-touch-icon" sizes="180x180" href="/static/apple-touch-icon.png"/>
+			<link rel="manifest" href="/static/site.webmanifest"/>
+			
+			<!-- Preconnect for performance -->
+			<link rel="preconnect" href="https://unpkg.com"/>
+			<link rel="preconnect" href="https://cdn.jsdelivr.net"/>
+			
+			<!-- Scripts and Styles -->
 			<script src="https://unpkg.com/htmx.org@1.9.10"></script>
 			<script src="https://unpkg.com/hyperscript.org@0.9.12"></script>
 			<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 			<link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet"/>
+			
+			<!-- HTMX Indicator Styles -->
 			<style>
 				.htmx-indicator {
 					opacity: 0;
@@ -25,14 +108,20 @@ templ Base(title string) {
 			</style>
 		</head>
 		<body class="bg-gray-50 min-h-screen">
+			<!-- Skip to main content for accessibility -->
+			<a href="#main-content" class="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 bg-blue-600 text-white px-4 py-2 rounded z-50">
+				Skip to main content
+			</a>
+			
 			<div class="container mx-auto px-4 py-8">
 				<header class="mb-8">
 					<h1 class="text-3xl font-bold text-gray-900">FAA Aircraft Search</h1>
 					<p class="text-gray-600 mt-2">Search and explore FAA aircraft database</p>
 				</header>
-				<main>
+				<main id="main-content">
 					{ children... }
 				</main>
+				@components.DisclaimerFooter()
 			</div>
 		</body>
 	</html>
